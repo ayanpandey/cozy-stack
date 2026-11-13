@@ -16,6 +16,7 @@ import (
 	"github.com/cozy/cozy-stack/pkg/consts"
 	"github.com/cozy/cozy-stack/pkg/couchdb"
 	"github.com/cozy/cozy-stack/pkg/jsonapi"
+	"github.com/cozy/cozy-stack/pkg/utils"
 	"github.com/cozy/cozy-stack/web/auth"
 	"github.com/cozy/cozy-stack/web/middlewares"
 	"github.com/labstack/echo/v4"
@@ -52,11 +53,8 @@ func (h *HTTPHandler) listClients(c echo.Context) error {
 	}
 
 	bookmark := c.QueryParam("page[cursor]")
-	limit, err := strconv.ParseInt(c.QueryParam("page[limit]"), 10, 64)
-	if err != nil || limit < 0 || limit > consts.MaxItemsPerPageForMango {
-		limit = 100
-	}
-	clients, bookmark, err := oauth.GetAll(instance, int(limit), bookmark)
+	limit := utils.ParseBoundedInt(c.QueryParam("page[limit]"), 0, consts.MaxItemsPerPageForMango, 100)
+	clients, bookmark, err := oauth.GetAll(instance, limit, bookmark)
 	if err != nil {
 		return err
 	}
@@ -67,7 +65,7 @@ func (h *HTTPHandler) listClients(c echo.Context) error {
 	}
 
 	links := &jsonapi.LinksList{}
-	if bookmark != "" && len(objs) == int(limit) {
+	if bookmark != "" && len(objs) == limit {
 		v := url.Values{}
 		v.Set("page[cursor]", bookmark)
 		if limit != 100 {

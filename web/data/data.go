@@ -3,6 +3,7 @@ package data
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/cozy/cozy-stack/pkg/couchdb/stream"
 	"github.com/cozy/cozy-stack/pkg/jsonapi"
 	"github.com/cozy/cozy-stack/pkg/logger"
+	"github.com/cozy/cozy-stack/pkg/utils"
 	"github.com/cozy/cozy-stack/web/files"
 	"github.com/cozy/cozy-stack/web/middlewares"
 	"github.com/labstack/echo/v4"
@@ -526,20 +528,14 @@ func normalDocs(c echo.Context) error {
 	if err := middlewares.AllowWholeType(c, permission.GET, doctype); err != nil {
 		return err
 	}
-	skip, err := strconv.ParseInt(c.QueryParam("skip"), 10, 64)
-	if err != nil || skip < 0 {
-		skip = 0
-	}
+	skip := utils.ParseBoundedInt(c.QueryParam("skip"), 0, math.MaxInt, 0)
 	bookmark := c.QueryParam("bookmark")
-	limit, err := strconv.ParseInt(c.QueryParam("limit"), 10, 64)
-	if err != nil || limit < 0 || limit > consts.MaxItemsPerPageForMango {
-		limit = 100
-	}
+	limit := utils.ParseBoundedInt(c.QueryParam("limit"), 0, consts.MaxItemsPerPageForMango, 100)
 	executionStats, err := strconv.ParseBool(c.QueryParam("execution_stats"))
 	if err != nil {
 		executionStats = false
 	}
-	res, err := couchdb.NormalDocs(instance, doctype, int(skip), int(limit), bookmark, executionStats)
+	res, err := couchdb.NormalDocs(instance, doctype, skip, limit, bookmark, executionStats)
 	if err != nil {
 		return err
 	}

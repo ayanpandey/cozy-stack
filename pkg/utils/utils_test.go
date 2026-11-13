@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"math"
 	"math/rand"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -111,4 +113,36 @@ func TestAbsPath(t *testing.T) {
 	assert.Equal(t, "/qux", qux)
 	quux := AbsPath("////qux//quux/../quux")
 	assert.Equal(t, "/qux/quux", quux)
+}
+
+func TestParseBoundedInt(t *testing.T) {
+	tests := []struct {
+		name      string
+		in        string
+		lo, hi    int
+		def, want int
+	}{
+		{"empty", "", 0, 1000, 100, 100},
+		{"not a number", "abc", 0, 1000, 100, 100},
+		{"negative", "-1", 0, 1000, 100, 100},
+		{"in range", "5", 0, 1000, 100, 5},
+		{"zero", "0", 0, 1000, 100, 0},
+		{"at max", "1000", 0, 1000, 100, 1000},
+		{"above max", "1001", 0, 1000, 100, 100},
+		{"beyond int64", "99999999999999999999", 0, math.MaxInt, 0, 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, ParseBoundedInt(tc.in, tc.lo, tc.hi, tc.def))
+		})
+	}
+
+	t.Run("does not wrap a value beyond int", func(t *testing.T) {
+		got := ParseBoundedInt("4294967297", 0, math.MaxInt, 0)
+		if strconv.IntSize == 32 {
+			assert.Equal(t, 0, got)
+		} else {
+			assert.Equal(t, int64(4294967297), int64(got))
+		}
+	})
 }
